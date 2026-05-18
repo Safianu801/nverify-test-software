@@ -24,6 +24,7 @@ localIo.on("connection", (socket) => {
   if (!endUserId) return socket.disconnect();
 
   const saasSocket = ioClient(SAAS_SOCKET_URL, {
+    transports: ["websocket"],
     auth: {
       publicKey: process.env.SAAS_PUBLIC_KEY,
       secretKey: process.env.SAAS_SECRET_KEY,

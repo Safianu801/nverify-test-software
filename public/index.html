@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>SaaS Chat Workspace</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -13,21 +16,27 @@
     <style>
       body {
         font-family: "Inter", sans-serif;
+        -webkit-tap-highlight-color: transparent;
       }
-      #chatScroll::-webkit-scrollbar {
-        width: 6px;
-      }
-      #chatScroll::-webkit-scrollbar-thumb {
-        background: rgba(15, 23, 42, 0.1);
-        border-radius: 99px;
-      }
+      /* Custom Scrollbars */
+      #chatScroll::-webkit-scrollbar,
       #convoList::-webkit-scrollbar {
-        width: 4px;
+        width: 5px;
       }
+      #chatScroll::-webkit-scrollbar-thumb,
       #convoList::-webkit-scrollbar-thumb {
-        background: rgba(15, 23, 42, 0.1);
-        border-radius: 99px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
       }
+
+      /* Chat Background Pattern (WhatsApp Vibe) */
+      .chat-bg {
+        background-color: #efeae2;
+        background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+        background-blend-mode: overlay;
+      }
+
+      /* Animations */
       .fade-in {
         animation: fadeIn 0.3s ease-in-out;
       }
@@ -43,16 +52,20 @@
       }
     </style>
   </head>
-  <body class="h-screen w-screen bg-slate-50 overflow-hidden text-slate-800">
-    <!-- LOGIN SCREEN -->
+  <body class="h-[100dvh] w-screen bg-slate-100 overflow-hidden text-slate-800">
+    <!-- ==============================
+         1. LOGIN SCREEN 
+         ============================== -->
     <div
       id="loginScreen"
-      class="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900"
+      class="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4"
     >
-      <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md fade-in">
+      <div
+        class="bg-white rounded-3xl shadow-2xl p-6 sm:p-10 w-full max-w-md fade-in"
+      >
         <div class="text-center mb-8">
           <div
-            class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"
+            class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"
           >
             <svg
               class="w-8 h-8"
@@ -107,7 +120,7 @@
           </div>
           <button
             id="startChatBtn"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition-colors mt-4 shadow-lg shadow-blue-600/30"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition-colors mt-2 shadow-lg shadow-blue-600/30"
           >
             Connect & Enter Workspace
           </button>
@@ -115,21 +128,30 @@
       </div>
     </div>
 
-    <!-- MAIN DASHBOARD -->
-    <div id="mainApp" class="h-full w-full flex hidden fade-in">
+    <!-- ==============================
+         2. MAIN DASHBOARD 
+         ============================== -->
+    <div
+      id="mainApp"
+      class="h-full w-full flex hidden max-w-[1600px] mx-auto shadow-2xl bg-white relative"
+    >
+      <!-- SIDEBAR (Conversation List) -->
+      <!-- Visible by default on Mobile, always visible on Desktop -->
       <aside
-        class="w-80 lg:w-96 bg-slate-50 border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10"
+        id="sidebar"
+        class="flex flex-col w-full md:w-[350px] lg:w-[400px] shrink-0 h-full border-r border-slate-200 bg-white z-20 absolute md:relative inset-0 transition-transform bg-white"
       >
+        <!-- Sidebar Header -->
         <div
-          class="h-20 px-6 flex items-center justify-between border-b border-slate-200 bg-white"
+          class="h-[60px] md:h-[70px] px-4 md:px-6 flex items-center justify-between border-b border-slate-200 bg-slate-50"
         >
           <div class="flex items-center gap-3">
             <div
-              class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 text-white flex items-center justify-center font-bold shadow-sm"
+              class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold shadow-sm"
             >
               <span id="currentUserInitial">U</span>
             </div>
-            <div>
+            <div class="hidden sm:block">
               <div
                 id="currentUserDisplay"
                 class="font-bold text-slate-800 leading-tight"
@@ -137,20 +159,20 @@
                 Loading...
               </div>
               <div
-                class="text-xs text-green-500 font-medium flex items-center gap-1 mt-0.5"
+                class="text-[11px] text-green-600 font-semibold flex items-center gap-1"
               >
-                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                 Online
               </div>
             </div>
           </div>
           <button
             onclick="showLogin()"
-            class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors"
+            class="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors"
             title="New Chat"
           >
             <svg
-              class="w-4 h-4"
+              class="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -164,59 +186,134 @@
             </svg>
           </button>
         </div>
-        <div class="flex-1 overflow-hidden flex flex-col bg-white">
-          <div class="px-6 py-4">
-            <h3
-              class="text-xs font-bold text-slate-400 uppercase tracking-wider"
+
+        <!-- Search Bar (Visual Only) -->
+        <div class="p-3 border-b border-slate-100">
+          <div class="bg-slate-100 rounded-lg flex items-center px-3 py-2">
+            <svg
+              class="w-4 h-4 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Active Conversations
-            </h3>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              ></path>
+            </svg>
+            <input
+              type="text"
+              placeholder="Search or start new chat"
+              class="bg-transparent w-full ml-2 outline-none text-sm text-slate-700 placeholder-slate-400"
+            />
           </div>
-          <div id="convoList" class="flex-1 overflow-y-auto"></div>
         </div>
+
+        <div id="convoList" class="flex-1 overflow-y-auto bg-white"></div>
       </aside>
 
+      <!-- CHAT AREA -->
+      <!-- Hidden on Mobile by default, always visible on Desktop -->
       <section
-        class="flex-1 flex flex-col bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50/90 bg-blend-overlay relative"
+        id="chatArea"
+        class="hidden md:flex flex-col flex-1 h-full chat-bg relative z-10 w-full absolute md:relative inset-0"
       >
+        <!-- Chat Header -->
         <div
-          class="h-20 px-8 border-b border-slate-200 bg-white/80 backdrop-blur-md flex items-center justify-between shadow-sm sticky top-0 z-10"
+          class="h-[60px] md:h-[70px] px-3 md:px-6 border-b border-slate-200 bg-slate-50 flex items-center shadow-sm sticky top-0 z-20"
         >
-          <div>
-            <h2 id="chatHeaderTitle" class="text-lg font-bold text-slate-800">
-              Select a chat
-            </h2>
-            <p
-              id="chatHeaderSub"
-              class="text-xs text-slate-500 font-medium mt-0.5"
-            >
-              Connect to start messaging
-            </p>
-          </div>
-          <span
-            id="typingIndicator"
-            class="text-sm text-blue-500 bg-blue-50 px-3 py-1 rounded-full font-medium hidden animate-pulse"
-            >Someone is typing...</span
+          <!-- Back Button (Mobile Only) -->
+          <button
+            onclick="showMobileList()"
+            class="md:hidden mr-2 p-2 text-slate-600 rounded-full hover:bg-slate-200 active:bg-slate-300 transition"
           >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              ></path>
+            </svg>
+          </button>
+
+          <div class="flex items-center gap-3 flex-1 cursor-pointer">
+            <div
+              id="headerAvatar"
+              class="w-10 h-10 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold shadow-sm shrink-0"
+            >
+              U
+            </div>
+            <div class="flex-1 min-w-0">
+              <h2
+                id="chatHeaderTitle"
+                class="text-[16px] md:text-lg font-bold text-slate-800 truncate leading-tight"
+              >
+                Select a chat
+              </h2>
+              <div class="flex items-center gap-2 mt-0.5">
+                <p
+                  id="chatHeaderSub"
+                  class="text-[12px] text-slate-500 truncate"
+                >
+                  Connect to start messaging
+                </p>
+                <span
+                  id="typingIndicator"
+                  class="text-[12px] text-blue-600 font-bold hidden animate-pulse bg-blue-100/50 px-2 rounded-full"
+                  >Typing...</span
+                >
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="chatScroll" class="flex-1 p-8 overflow-y-auto space-y-6"></div>
-        <div class="p-6 bg-white border-t border-slate-200">
-          <div class="flex items-center gap-3 max-w-5xl mx-auto">
+
+        <!-- Chat Messages Container -->
+        <div
+          id="chatScroll"
+          class="flex-1 p-4 md:p-8 overflow-y-auto space-y-4 md:space-y-6 flex flex-col"
+        ></div>
+
+        <!-- Input Area (WhatsApp Style) -->
+        <div class="p-3 md:p-4 bg-slate-50 border-t border-slate-200">
+          <div class="flex items-center gap-2 max-w-5xl mx-auto">
+            <button class="text-slate-500 hover:text-slate-700 p-2">
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </button>
             <div class="flex-1 relative">
               <input
                 id="messageInput"
-                class="w-full bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl px-6 py-4 outline-none transition-all pr-12 text-slate-700 placeholder-slate-400"
-                placeholder="Type your message..."
+                class="w-full bg-white border border-slate-300 rounded-full px-5 py-3 md:py-3.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-800 text-[15px] shadow-sm"
+                placeholder="Type a message"
                 disabled
               />
             </div>
             <button
               id="sendBtn"
-              class="bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-2xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20 transition-transform active:scale-95"
+              class="bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-transform active:scale-95 shrink-0"
               disabled
             >
               <svg
-                class="w-6 h-6 ml-1"
+                class="w-5 h-5 md:w-6 md:h-6 ml-1 transform rotate-45"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -234,39 +331,58 @@
       </section>
     </div>
 
-    <!-- MESSAGE TEMPLATE -->
+    <!-- ==============================
+         MESSAGE TEMPLATE 
+         ============================== -->
     <template id="msgTpl">
-      <div class="msg-wrapper flex items-end gap-3 w-full justify-start">
+      <!-- Added justify-start so we can toggle to justify-end safely -->
+      <div class="msg-wrapper flex items-end w-full justify-start mt-1">
+        <!-- Bubble -->
         <div
-          class="msg-avatar bg-gradient-to-tr from-slate-200 to-slate-300 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 mb-1"
+          class="msg-bubble bg-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] p-2.5 md:p-3 rounded-2xl rounded-tl-none relative group min-w-[100px] max-w-[85%] md:max-w-[65%]"
         >
-          U
-        </div>
-        <div
-          class="msg-bubble bg-white border border-slate-100 shadow-sm p-3.5 rounded-2xl rounded-bl-sm relative group min-w-[120px] max-w-[70%] transition-colors"
-        >
+          <!-- Text -->
           <div
-            class="text-[15px] msg-text whitespace-pre-wrap text-slate-800 leading-relaxed"
+            class="text-[15px] msg-text whitespace-pre-wrap text-slate-800 leading-relaxed break-words"
           ></div>
+
+          <!-- Meta (Time & Read Receipts) -->
           <div
-            class="text-[10px] text-slate-400 mt-1.5 flex justify-between items-center gap-3"
+            class="text-[10px] text-slate-400 mt-1 flex justify-end items-center gap-1.5 float-right ml-4 pt-1"
           >
             <span class="sender-time font-medium"></span>
-            <span class="read-status text-blue-500 font-bold hidden">✓✓</span>
+            <span class="read-status text-blue-500 font-bold hidden">
+              <!-- WhatsApp Double Tick SVG -->
+              <svg
+                class="w-3.5 h-3.5"
+                viewBox="0 0 16 15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 8.5l3.5 3.5 7-7" />
+                <path d="M6.5 12l2.5 2.5 6-6" />
+              </svg>
+            </span>
           </div>
+
           <div
-            class="reactions-display absolute -bottom-3 right-4 bg-white border border-slate-100 shadow-sm rounded-full px-2 py-0.5 text-xs hidden z-10"
+            class="reactions-display absolute -bottom-3 right-2 bg-white border border-slate-100 shadow-sm rounded-full px-2 py-0.5 text-xs hidden z-10"
           ></div>
+
+          <!-- Hover Actions -->
           <div
-            class="actions absolute -top-10 right-0 bg-slate-800 text-white rounded-xl shadow-lg hidden group-hover:flex overflow-hidden transform scale-90 origin-bottom-right"
+            class="actions absolute -top-8 right-0 bg-slate-800 text-white rounded-lg shadow-lg hidden group-hover:flex overflow-hidden transform scale-90 origin-bottom-right z-20"
           >
             <button
-              class="emoji-btn text-xs px-3 py-2 hover:bg-slate-700 border-r border-slate-700 transition-colors"
+              class="emoji-btn text-xs px-3 py-2 hover:bg-slate-700 border-r border-slate-700 transition"
             >
               😊
             </button>
             <button
-              class="delete-btn text-xs px-3 py-2 text-red-400 hover:bg-slate-700 hover:text-red-300 transition-colors hidden font-medium"
+              class="delete-btn text-xs px-3 py-2 text-red-400 hover:bg-slate-700 transition hidden"
             >
               Delete
             </button>
@@ -301,31 +417,54 @@
         "convoList",
       ].map((id) => document.getElementById(id));
 
+      const sidebarEl = document.getElementById("sidebar");
+      const chatAreaEl = document.getElementById("chatArea");
+
       let socket, activeUser, currentRoom;
       const domNodes = new Map();
 
+      // --- MOBILE RESPONSIVE UI TOGGLES ---
       function showLogin() {
         document.getElementById("mainApp").classList.add("hidden");
         document.getElementById("loginScreen").classList.remove("hidden");
+        if (socket) socket.disconnect();
+      }
+
+      function showMobileChat() {
+        sidebarEl.classList.add("hidden", "md:flex");
+        sidebarEl.classList.remove("flex");
+        chatAreaEl.classList.remove("hidden", "md:flex");
+        chatAreaEl.classList.add("flex");
+      }
+
+      function showMobileList() {
+        sidebarEl.classList.remove("hidden", "md:flex");
+        sidebarEl.classList.add("flex");
+        chatAreaEl.classList.add("hidden", "md:flex");
+        chatAreaEl.classList.remove("flex");
+
+        // Reset Header
+        document.getElementById("chatHeaderTitle").textContent =
+          "Select a chat";
+        document.getElementById("chatHeaderSub").textContent =
+          "Connect to start messaging";
+        currentRoom = null; // Clear room context when going back to list
       }
 
       function renderMsg(msg) {
         if (domNodes.has(msg._id)) return;
         const tpl = document.getElementById("msgTpl").content.cloneNode(true);
-        const [wrapper, bubble, text, avatar, delBtn, readSt, reactDisp, time] =
-          [
-            ".msg-wrapper",
-            ".msg-bubble",
-            ".msg-text",
-            ".msg-avatar",
-            ".delete-btn",
-            ".read-status",
-            ".reactions-display",
-            ".sender-time",
-          ].map((sel) => tpl.querySelector(sel));
+        const [wrapper, bubble, text, delBtn, readSt, reactDisp, time] = [
+          ".msg-wrapper",
+          ".msg-bubble",
+          ".msg-text",
+          ".delete-btn",
+          ".read-status",
+          ".reactions-display",
+          ".sender-time",
+        ].map((sel) => tpl.querySelector(sel));
 
         domNodes.set(msg._id, wrapper);
-        avatar.textContent = (msg.senderId || "U")[0].toUpperCase();
         text.textContent = msg.deleted ? "🚫 Message deleted" : msg.message;
         time.textContent = new Date(msg.createdAt).toLocaleTimeString([], {
           hour: "2-digit",
@@ -333,19 +472,18 @@
         });
 
         if (msg.senderId === activeUser) {
+          // --- Sender (Right Side) Styling ---
           wrapper.classList.remove("justify-start");
           wrapper.classList.add("justify-end");
 
-          bubble.classList.replace("bg-white", "bg-blue-600");
-          bubble.classList.replace("rounded-bl-sm", "rounded-br-sm");
-          bubble.classList.remove("border", "border-slate-100");
-          text.classList.replace("text-slate-800", "text-white");
-          time.classList.replace("text-slate-400", "text-blue-200");
-          readSt.classList.replace("text-blue-500", "text-blue-200");
+          bubble.classList.replace("bg-white", "bg-[#d9fdd3]"); // WhatsApp Sender Green
+          bubble.classList.replace("rounded-tl-none", "rounded-tr-none");
 
-          avatar.classList.add("hidden");
           if (!msg.deleted) delBtn.classList.remove("hidden");
           if (msg.seen) readSt.classList.remove("hidden");
+        } else {
+          // --- Receiver (Left Side) Styling ---
+          bubble.classList.add("rounded-tl-none");
         }
 
         if (msg.reactions?.length) {
@@ -384,7 +522,7 @@
         };
 
         chat.appendChild(tpl);
-        chat.scrollTop = chat.scrollHeight;
+        setTimeout(() => (chat.scrollTop = chat.scrollHeight), 50); // Ensure smooth scroll
       }
 
       btn.onclick = () => {
@@ -395,7 +533,6 @@
           return alert("My User ID and Conversation ID are required!");
         if (socket) socket.disconnect();
 
-        // FIX: Enabled polling fallback to prevent connection drops on Render
         socket = io(LOCAL_URL, {
           auth: { identity: { userID: activeUser } },
           transports: ["polling", "websocket"],
@@ -403,7 +540,6 @@
 
         socket.on("connect", () => {
           msgInput.disabled = sendBtn.disabled = false;
-          msgInput.focus();
 
           document.getElementById("loginScreen").classList.add("hidden");
           document.getElementById("mainApp").classList.remove("hidden");
@@ -411,9 +547,12 @@
             activeUser;
           document.getElementById("currentUserInitial").textContent =
             activeUser[0].toUpperCase();
-          document.getElementById("chatHeaderTitle").textContent = currentRoom;
-          document.getElementById("chatHeaderSub").textContent =
-            `Chatting with ${recId.value.trim() || "Group"}`;
+
+          document.getElementById("chatHeaderTitle").textContent =
+            recId.value.trim() || currentRoom;
+          document.getElementById("chatHeaderSub").textContent = "Online";
+          document.getElementById("headerAvatar").textContent =
+            (recId.value.trim() || currentRoom)[0].toUpperCase();
 
           socket.emit("chat:joinChat", {
             conversationId: currentRoom,
@@ -422,6 +561,8 @@
             endUserId: activeUser,
           });
           socket.emit("chat:getConversations");
+
+          showMobileChat(); // Open chat automatically on mobile after logging in
         });
 
         socket.on("chat:error", (err) => {
@@ -437,21 +578,22 @@
 
         socket.on("chat:newMessage", (msg) => {
           if (msg.conversationId === currentRoom) renderMsg(msg);
+          // Also refresh list to bump it to the top
+          socket.emit("chat:getConversations");
         });
 
-        // ==========================================
-        // UI UPDATE: Sidebar Typing Indicator Logic
-        // ==========================================
         socket.on("chat:typing", ({ isTyping, conversationId, senderId }) => {
-          // Prevent showing typing indicator for ourselves
           if (senderId === activeUser) return;
 
-          // 1. Update the top Header if we are currently looking at that specific chat
+          // Header typing status
           if (conversationId === currentRoom) {
             typInd.style.display = isTyping ? "block" : "none";
+            document.getElementById("chatHeaderSub").style.display = isTyping
+              ? "none"
+              : "block";
           }
 
-          // 2. Update the Sidebar Conversation List
+          // Sidebar typing status
           const typingSidebarEl = document.getElementById(
             `convo-typing-${conversationId}`,
           );
@@ -494,7 +636,7 @@
           if (el) {
             const txt = el.querySelector(".msg-text");
             txt.textContent = "🚫 This message was deleted";
-            txt.className = "text-[14px] text-white/70 italic";
+            txt.className = "text-[14px] text-slate-500 italic";
             el.querySelector(".actions")?.remove();
           }
         });
@@ -504,28 +646,42 @@
           chats.forEach((c) => {
             const div = document.createElement("div");
             div.className =
-              "px-6 py-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between group";
+              "px-4 py-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between group";
 
             const initials = (c.participantId || "G")[0].toUpperCase();
             const badge = c.unreadCount
-              ? `<span class="bg-blue-600 text-white rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm shrink-0">${c.unreadCount}</span>`
+              ? `<span class="bg-blue-500 text-white rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm shrink-0 min-w-[20px] text-center">${c.unreadCount}</span>`
               : "";
 
+            // Format time properly
+            const timeString = new Date(c.lastUpdatedAt).toLocaleTimeString(
+              [],
+              { hour: "2-digit", minute: "2-digit" },
+            );
+
             div.innerHTML = `
-              <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold shrink-0">${initials}</div>
-                <div class="flex flex-col min-w-0">
-                  <span class="font-bold text-slate-800 text-sm truncate group-hover:text-blue-600 transition-colors">${c.participantId || "Group"}</span>
-                  <span id="convo-msg-${c.conversationId}" class="text-xs text-slate-500 truncate mt-0.5">${c.lastMessage}</span>
-                  <span id="convo-typing-${c.conversationId}" class="text-[11px] font-bold text-blue-500 mt-0.5 hidden animate-pulse">Typing...</span>
+              <div class="flex items-center gap-3 overflow-hidden w-full">
+                <div class="w-12 h-12 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold shrink-0 text-lg">${initials}</div>
+                <div class="flex flex-col min-w-0 flex-1">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="font-bold text-slate-800 text-[15px] truncate">${c.participantId || "Group"}</span>
+                    <span class="text-[11px] text-slate-400 shrink-0 ml-2 ${c.unreadCount ? "text-blue-500 font-bold" : ""}">${timeString}</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span id="convo-msg-${c.conversationId}" class="text-[13px] text-slate-500 truncate pr-2">${c.lastMessage}</span>
+                    <span id="convo-typing-${c.conversationId}" class="text-[13px] font-bold text-blue-500 hidden animate-pulse">Typing...</span>
+                    ${badge}
+                  </div>
                 </div>
               </div>
-              ${badge}
             `;
 
             div.onclick = () => {
               convId.value = c.conversationId;
               recId.value = c.participantId;
+              document.getElementById("chatHeaderTitle").textContent =
+                c.participantId;
+              document.getElementById("headerAvatar").textContent = initials;
               btn.click();
             };
             convoList.appendChild(div);
@@ -537,7 +693,6 @@
       msgInput.oninput = () => {
         if (!socket) return;
 
-        // Emitting receiverId so the backend knows whose sidebar to update globally
         const receiver = recId.value.trim();
         socket.emit("chat:typing:start", {
           conversationId: currentRoom,
@@ -567,6 +722,10 @@
         });
 
         msgInput.value = "";
+        socket.emit("chat:typing:stop", {
+          conversationId: currentRoom,
+          receiverId: recId.value.trim(),
+        });
       };
 
       msgInput.onkeydown = (e) => {

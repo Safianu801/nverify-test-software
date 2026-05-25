@@ -1,6 +1,6 @@
 const express = require("express");
 const http = require("http");
-const { Server } = require("server.io"); // Note: Ensure this is "socket.io" in your package.json
+const { Server } = require("socket.io"); // Note: Ensure this is "socket.io" in your package.json
 const ioClient = require("socket.io-client");
 require("dotenv").config();
 

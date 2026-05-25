@@ -35,10 +35,9 @@ localIo.on("connection", (socket) => {
   });
 
   // Forward SaaS -> Local Client
-  saasSocket.on("video:error", (err) => socket.emit("video:error", err));
-  saasSocket.on("video:callHistory", (data) =>
-    socket.emit("video:callHistory", data),
-  );
+  saasSocket.on("video:iceConfig", (data) =>
+    socket.emit("video:iceConfig", data),
+  ); // CRITICAL LINE
   saasSocket.on("video:incomingCall", (data) =>
     socket.emit("video:incomingCall", data),
   );
@@ -48,30 +47,17 @@ localIo.on("connection", (socket) => {
   saasSocket.on("video:userJoined", (data) =>
     socket.emit("video:userJoined", data),
   );
-  saasSocket.on("video:participants", (data) =>
-    socket.emit("video:participants", data),
-  );
   saasSocket.on("video:offer", (data) => socket.emit("video:offer", data));
   saasSocket.on("video:answer", (data) => socket.emit("video:answer", data));
   saasSocket.on("video:iceCandidate", (data) =>
     socket.emit("video:iceCandidate", data),
   );
-  saasSocket.on("video:mediaStateChanged", (data) =>
-    socket.emit("video:mediaStateChanged", data),
-  );
   saasSocket.on("video:userLeft", (data) =>
     socket.emit("video:userLeft", data),
   );
-
-  // NEW: Forward ICE Configuration from SaaS to Frontend
-  saasSocket.on("video:iceConfig", (data) =>
-    socket.emit("video:iceConfig", data),
-  );
+  saasSocket.on("video:error", (err) => socket.emit("video:error", err));
 
   // Forward Local Client -> SaaS
-  socket.on("video:getCallHistory", (data) =>
-    saasSocket.emit("video:getCallHistory", data),
-  );
   socket.on("video:initiateCall", (data) =>
     saasSocket.emit("video:initiateCall", data),
   );
@@ -85,9 +71,6 @@ localIo.on("connection", (socket) => {
   socket.on("video:answer", (data) => saasSocket.emit("video:answer", data));
   socket.on("video:iceCandidate", (data) =>
     saasSocket.emit("video:iceCandidate", data),
-  );
-  socket.on("video:toggleMedia", (data) =>
-    saasSocket.emit("video:toggleMedia", data),
   );
   socket.on("video:leaveCall", (data) =>
     saasSocket.emit("video:leaveCall", data),

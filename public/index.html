@@ -378,7 +378,7 @@
 
     <script>
       const LOCAL_URL = "https://nverify-test-software.onrender.com";
-      const [myId, recId, convId, btn, chat, msgInput, sendBtn, convoList] = [
+      const [myId, recId, convId, btn, chat, msgInput, sendBtn] = [
         "myUserId",
         "receiverId",
         "convId",
@@ -386,52 +386,18 @@
         "chatScroll",
         "messageInput",
         "sendBtn",
-        "convoList",
       ].map((id) => document.getElementById(id));
 
       let socket, activeUser, currentRoom;
-      const domNodes = new Map();
 
-      // ==========================================
-      // VIDEO CALL VARIABLES (No hardcoded credentials)
-      // ==========================================
-      const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
-      const videoStage = document.getElementById("videoCallStage");
-
-      let localStream;
-      let peerConnection;
-      let activeCallId = null;
-      let isCaller = false;
-
-      // Start with only Google STUN as a basic fallback
+      // VIDEO CALL STATE
+      let localStream,
+        peerConnection,
+        activeCallId = null,
+        isCaller = false;
       let iceConfig = {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
-
-      function showMobileList() {
-        document.getElementById("sidebar").classList.remove("hidden");
-        document.getElementById("chatArea").classList.add("hidden");
-      }
-
-      function renderMsg(msg) {
-        if (domNodes.has(msg._id)) return;
-        const tpl = document.getElementById("msgTpl").content.cloneNode(true);
-        const wrapper = tpl.querySelector(".msg-wrapper");
-        const bubble = tpl.querySelector(".msg-bubble");
-        tpl.querySelector(".msg-text").textContent = msg.message;
-        tpl.querySelector(".sender-time").textContent = new Date(
-          msg.createdAt,
-        ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-        if (msg.senderId === activeUser) {
-          wrapper.classList.replace("justify-start", "justify-end");
-          bubble.classList.replace("bg-white", "bg-[#d9fdd3]");
-        }
-        chat.appendChild(tpl);
-        chat.scrollTop = chat.scrollHeight;
-        domNodes.set(msg._id, wrapper);
-      }
 
       btn.onclick = () => {
         activeUser = myId.value.trim();
@@ -444,39 +410,24 @@
         });
 
         socket.on("connect", () => {
-          msgInput.disabled = sendBtn.disabled = false;
           document.getElementById("loginScreen").classList.add("hidden");
           document.getElementById("mainApp").classList.remove("hidden");
-          document.getElementById("currentUserDisplay").textContent =
-            activeUser;
-          document.getElementById("currentUserInitial").textContent =
-            activeUser[0].toUpperCase();
-
+          msgInput.disabled = sendBtn.disabled = false;
           socket.emit("chat:joinChat", {
             conversationId: currentRoom,
             senderId: activeUser,
-            receiverId: recId.value.trim(),
-            endUserId: activeUser,
           });
-          socket.emit("chat:getConversations");
         });
 
-        // ==========================================
-        // DYNAMIC ICE SERVER LISTENER
-        // ==========================================
+        // RECEIVE DYNAMIC TURN SERVERS
         socket.on("video:iceConfig", (data) => {
-          console.log("Secure ICE credentials received from backend");
-          if (data && data.iceServers) {
-            iceConfig = { iceServers: data.iceServers };
-          }
+          console.log("TURN credentials received");
+          iceConfig = { iceServers: data.iceServers };
         });
 
-        // Video Signaling Listeners
         socket.on("video:incomingCall", ({ callId, callerId }) => {
           activeCallId = callId;
           document.getElementById("incomingCallName").textContent = callerId;
-          document.getElementById("incomingCallAvatar").textContent =
-            callerId[0].toUpperCase();
           document
             .getElementById("incomingCallModal")
             .classList.remove("hidden");
@@ -484,21 +435,15 @@
 
         socket.on("video:callResponse", async ({ status }) => {
           if (status === "accepted") {
-            document.getElementById("videoCallStatus").textContent =
-              "Connecting...";
             await initMedia();
             socket.emit("video:joinRoom", {
               callId: activeCallId,
               participantId: activeUser,
             });
-          } else {
-            resetVideoCall();
-            alert("Call declined");
-          }
+          } else resetVideoCall();
         });
 
         socket.on("video:userJoined", async () => {
-          document.getElementById("videoCallStatus").textContent = "Connected";
           if (isCaller) {
             createPeerConnection();
             const offer = await peerConnection.createOffer();
@@ -533,33 +478,25 @@
         });
 
         socket.on("video:userLeft", () => resetVideoCall());
-        socket.on("chat:history", (data) => data.messages.forEach(renderMsg));
-        socket.on("chat:newMessage", (msg) => renderMsg(msg));
       };
 
-      // ==========================================
-      // WEBRTC FUNCTIONS
-      // ==========================================
       async function initMedia() {
-        try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          localVideo.srcObject = localStream;
-          videoStage.classList.remove("hidden");
-        } catch (e) {
-          alert("Camera/Mic access denied");
-        }
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        document.getElementById("localVideo").srcObject = localStream;
+        document.getElementById("videoCallStage").classList.remove("hidden");
       }
 
       function createPeerConnection() {
-        // Uses the iceConfig received via "video:iceConfig"
+        // Uses the dynamic credentials sent from backend
         peerConnection = new RTCPeerConnection(iceConfig);
         localStream
           .getTracks()
           .forEach((t) => peerConnection.addTrack(t, localStream));
-        peerConnection.ontrack = (e) => (remoteVideo.srcObject = e.streams[0]);
+        peerConnection.ontrack = (e) =>
+          (document.getElementById("remoteVideo").srcObject = e.streams[0]);
         peerConnection.onicecandidate = (e) => {
           if (e.candidate)
             socket.emit("video:iceCandidate", {
@@ -573,7 +510,7 @@
       function resetVideoCall() {
         if (localStream) localStream.getTracks().forEach((t) => t.stop());
         if (peerConnection) peerConnection.close();
-        videoStage.classList.add("hidden");
+        document.getElementById("videoCallStage").classList.add("hidden");
         document.getElementById("incomingCallModal").classList.add("hidden");
         peerConnection = null;
         localStream = null;
@@ -581,24 +518,22 @@
         isCaller = false;
       }
 
-      // UI Actions
+      // BUTTON HANDLERS
       document.getElementById("startCallBtn").onclick = () => {
         isCaller = true;
         activeCallId = `call_${Date.now()}`;
-        document.getElementById("videoCallPeerName").textContent = recId.value;
         socket.emit("video:initiateCall", {
           callId: activeCallId,
           callerId: activeUser,
           receiverId: recId.value,
         });
-        // Join immediately to trigger backend to send ICE Config
         socket.emit("video:joinRoom", {
           callId: activeCallId,
           participantId: activeUser,
         });
       };
 
-      document.getElementById("acceptCallBtn").onclick = async () => {
+      document.getElementById("acceptCallBtn").onclick = () => {
         socket.emit("video:respondToCall", {
           callId: activeCallId,
           status: "accepted",
@@ -623,16 +558,6 @@
           participantId: activeUser,
         });
         resetVideoCall();
-      };
-
-      sendBtn.onclick = () => {
-        socket.emit("chat:sendMessage", {
-          conversationId: currentRoom,
-          senderId: activeUser,
-          receiverId: recId.value,
-          message: msgInput.value,
-        });
-        msgInput.value = "";
       };
     </script>
   </body>

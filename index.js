@@ -1,6 +1,6 @@
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
+const { Server } = require("server.io"); // Note: Ensure this is "socket.io" in your package.json
 const ioClient = require("socket.io-client");
 require("dotenv").config();
 
@@ -82,10 +82,10 @@ localIo.on("connection", (socket) => {
   );
 
   // ==========================================
-  // 2. VIDEO CALL EVENTS (New)
+  // 2. VIDEO CALL EVENTS (Updated with TURN/ICE Support)
   // ==========================================
 
-  // Forward SaaS -> Local Client
+  // --- Forward SaaS -> Local Client ---
   saasSocket.on("video:error", (err) => socket.emit("video:error", err));
   saasSocket.on("video:callHistory", (data) =>
     socket.emit("video:callHistory", data),
@@ -102,6 +102,12 @@ localIo.on("connection", (socket) => {
   saasSocket.on("video:participants", (data) =>
     socket.emit("video:participants", data),
   );
+
+  // NEW: Receives Twilio ICE servers from SaaS and sends to Frontend
+  saasSocket.on("video:iceConfig", (data) =>
+    socket.emit("video:iceConfig", data),
+  );
+
   saasSocket.on("video:offer", (data) => socket.emit("video:offer", data));
   saasSocket.on("video:answer", (data) => socket.emit("video:answer", data));
   saasSocket.on("video:iceCandidate", (data) =>
@@ -114,7 +120,7 @@ localIo.on("connection", (socket) => {
     socket.emit("video:userLeft", data),
   );
 
-  // Forward Local Client -> SaaS
+  // --- Forward Local Client -> SaaS ---
   socket.on("video:getCallHistory", (data) =>
     saasSocket.emit("video:getCallHistory", data),
   );
@@ -124,6 +130,12 @@ localIo.on("connection", (socket) => {
   socket.on("video:respondToCall", (data) =>
     saasSocket.emit("video:respondToCall", data),
   );
+
+  // NEW: Manual request for ICE servers from Frontend to SaaS
+  socket.on("video:getIceServers", (data) =>
+    saasSocket.emit("video:getIceServers", data),
+  );
+
   socket.on("video:joinRoom", (data) =>
     saasSocket.emit("video:joinRoom", data),
   );

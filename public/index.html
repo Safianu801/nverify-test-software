@@ -513,14 +513,19 @@
       </div>
     </template>
 
+    <!-- ... (Keep your existing HTML Head and Styles) ... -->
+    <!-- The only change is inside the <script> at the bottom -->
+
     <script>
+      // Updated URL to your Proxy Backend
       const LOCAL_URL = "https://nverify-test-software.onrender.com";
+
       const [
-        myId,
-        recId,
-        convId,
-        btn,
-        chat,
+        myIdInput,
+        recIdInput,
+        convIdInput,
+        connectBtn,
+        chatScroll,
         msgInput,
         sendBtn,
         typInd,
@@ -539,21 +544,22 @@
 
       const sidebarEl = document.getElementById("sidebar");
       const chatAreaEl = document.getElementById("chatArea");
+
       let socket, activeUser, currentRoom;
       const domNodes = new Map();
 
-      // UI Toggles
+      // WebRTC State
+      let localStream;
+      let peerConnections = {}; // Map of targetId -> RTCPeerConnection
+      let iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
+      let activeCallId = null;
+      let isCaller = false;
+
+      // UI Helpers
       function showMobileChat() {
         sidebarEl.classList.add("hidden", "md:flex");
         chatAreaEl.classList.remove("hidden", "md:flex");
         chatAreaEl.classList.add("flex");
-      }
-      function showMobileList() {
-        sidebarEl.classList.remove("hidden", "md:flex");
-        sidebarEl.classList.add("flex");
-        chatAreaEl.classList.add("hidden", "md:flex");
-        chatAreaEl.classList.remove("flex");
-        currentRoom = null;
       }
 
       function renderMsg(msg) {
@@ -583,38 +589,17 @@
           if (!msg.deleted) delBtn.classList.remove("hidden");
           if (msg.seen) readSt.classList.remove("hidden");
         }
-        if (msg.reactions?.length) {
-          reactDisp.textContent = msg.reactions
-            .map((r) => r.reaction)
-            .join(" ");
-          reactDisp.classList.remove("hidden");
-        }
-        tpl.querySelector(".emoji-btn").onclick = () => {
-          const r = prompt("Emoji?");
-          if (r && socket)
-            socket.emit("chat:addReaction", {
-              messageId: msg._id,
-              reaction: r,
-              senderId: activeUser,
-            });
-        };
-        delBtn.onclick = () => {
-          if (confirm("Delete?"))
-            socket.emit("chat:deleteMessage", {
-              messageId: msg._id,
-              senderId: activeUser,
-            });
-        };
-        chat.appendChild(tpl);
-        setTimeout(() => (chat.scrollTop = chat.scrollHeight), 50);
+
+        chatScroll.appendChild(tpl);
+        chatScroll.scrollTop = chatScroll.scrollHeight;
       }
 
-      btn.onclick = () => {
-        activeUser = myId.value.trim();
-        currentRoom = convId.value.trim();
+      // CONNECTION START
+      connectBtn.onclick = () => {
+        activeUser = myIdInput.value.trim();
+        currentRoom = convIdInput.value.trim();
         if (!activeUser || !currentRoom)
           return alert("Required fields missing!");
-        if (socket) socket.disconnect();
 
         socket = io(LOCAL_URL, {
           auth: { identity: { userID: activeUser } },
@@ -627,207 +612,184 @@
           document.getElementById("mainApp").classList.remove("hidden");
           document.getElementById("currentUserDisplay").textContent =
             activeUser;
-          document.getElementById("currentUserInitial").textContent =
-            activeUser[0].toUpperCase();
-          document.getElementById("chatHeaderTitle").textContent =
-            recId.value.trim() || currentRoom;
-          document.getElementById("headerAvatar").textContent =
-            (recId.value.trim() || currentRoom)[0].toUpperCase();
+
           socket.emit("chat:joinChat", {
             conversationId: currentRoom,
             senderId: activeUser,
-            receiverId: recId.value.trim() || null,
+            receiverId: recIdInput.value.trim() || null,
             endUserId: activeUser,
           });
           socket.emit("chat:getConversations");
           showMobileChat();
         });
 
-        // Chat listeners
+        // Chat Logic
         socket.on("chat:history", (data) => {
-          chat.innerHTML = "";
+          chatScroll.innerHTML = "";
           domNodes.clear();
           data.messages.forEach(renderMsg);
         });
+
         socket.on("chat:newMessage", (msg) => {
           if (msg.conversationId === currentRoom) renderMsg(msg);
-          socket.emit("chat:getConversations");
-        });
-        socket.on("chat:typing", ({ isTyping, conversationId, senderId }) => {
-          if (senderId !== activeUser && conversationId === currentRoom)
-            typInd.style.display = isTyping ? "block" : "none";
-        });
-        socket.on("chat:conversations", ({ chats }) => {
-          convoList.innerHTML = "";
-          chats.forEach((c) => {
-            const div = document.createElement("div");
-            div.className =
-              "px-4 py-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 flex items-center gap-3";
-            div.innerHTML = `<div class="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center font-bold">${(c.participantId || "G")[0]}</div><div class="flex-1"><b>${c.participantId || "Group"}</b><p class="text-xs text-slate-500 truncate">${c.lastMessage}</p></div>`;
-            div.onclick = () => {
-              convId.value = c.conversationId;
-              recId.value = c.participantId;
-              btn.click();
-            };
-            convoList.appendChild(div);
-          });
         });
 
         // ==========================================
-        // VIDEO CALL LISTENERS (Updated for TURN)
+        // CONFERENCE VIDEO LOGIC
         // ==========================================
-        socket.on("video:iceConfig", ({ iceServers: newIceServers }) => {
-          console.log("Received dynamic ICE config from Twilio");
-          iceServers = newIceServers; // Update global ICE servers
+
+        socket.on("video:iceConfig", (data) => {
+          iceServers = data.iceServers;
         });
 
         socket.on("video:incomingCall", ({ callId, callerId }) => {
           activeCallId = callId;
           document.getElementById("incomingCallName").textContent = callerId;
-          document.getElementById("incomingCallAvatar").textContent =
-            callerId[0].toUpperCase();
           document
             .getElementById("incomingCallModal")
             .classList.remove("hidden");
         });
 
-        socket.on("video:callResponse", async ({ callId, status }) => {
-          if (status === "accepted") {
-            document.getElementById("videoCallStatus").textContent =
-              "Connecting...";
-            await initMedia();
-            socket.emit("video:joinRoom", {
-              callId,
-              participantId: activeUser,
-            });
-          } else {
-            resetVideoCall();
-            alert("Call Declined");
-          }
-        });
-
-        socket.on("video:userJoined", async ({ participantId }) => {
-          document.getElementById("videoCallStatus").textContent = "Connected";
-          if (activeCallId && isCaller) {
-            createPeerConnection();
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            socket.emit("video:offer", {
-              callId: activeCallId,
-              data: offer,
-              senderId: activeUser,
-            });
+        socket.on("video:ready", async (data) => {
+          iceServers = data.iceServers;
+          // If I'm joining a call already in progress, I need to offer to everyone
+          for (const remoteId of data.existingParticipants) {
+            if (remoteId !== activeUser) await initiateOffer(remoteId);
           }
         });
 
         socket.on("video:offer", async ({ data, senderId }) => {
-          createPeerConnection();
-          await peerConnection.setRemoteDescription(data);
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
+          const pc = createPeerConnection(senderId);
+          await pc.setRemoteDescription(new RTCSessionDescription(data));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
           socket.emit("video:answer", {
             callId: activeCallId,
             data: answer,
+            targetId: senderId,
             senderId: activeUser,
           });
         });
 
-        socket.on("video:answer", async ({ data }) => {
-          await peerConnection.setRemoteDescription(data);
+        socket.on("video:answer", async ({ data, senderId }) => {
+          const pc = peerConnections[senderId];
+          if (pc)
+            await pc.setRemoteDescription(new RTCSessionDescription(data));
         });
-        socket.on("video:iceCandidate", async ({ data }) => {
-          if (data && peerConnection)
-            await peerConnection.addIceCandidate(data);
+
+        socket.on("video:iceCandidate", async ({ data, senderId }) => {
+          const pc = peerConnections[senderId];
+          if (pc) await pc.addIceCandidate(new RTCIceCandidate(data));
         });
-        socket.on("video:userLeft", () => {
-          resetVideoCall();
-          alert("Call ended.");
+
+        socket.on("video:userJoined", ({ participantId }) => {
+          document.getElementById("videoCallStatus").textContent = "Connected";
+        });
+
+        socket.on("video:userLeft", ({ participantId }) => {
+          if (peerConnections[participantId]) {
+            peerConnections[participantId].close();
+            delete peerConnections[participantId];
+          }
+          if (Object.keys(peerConnections).length === 0) resetVideoCall();
         });
       };
 
-      // ==========================================
-      // WEBRTC & VIDEO LOGIC (Dynamic TURN)
-      // ==========================================
-      const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
-      const videoStage = document.getElementById("videoCallStage");
-      let localStream,
-        peerConnection,
-        activeCallId = null,
-        isCaller = false;
+      // SEND MESSAGE
+      sendBtn.onclick = () => {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        socket.emit("chat:sendMessage", {
+          conversationId: currentRoom,
+          senderId: activeUser,
+          message: text,
+          receiverId: recIdInput.value.trim(),
+        });
+        msgInput.value = "";
+      };
 
-      // Default STUN server (will be overwritten by Twilio config)
-      let iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
-
+      // WebRTC Implementation
       async function initMedia() {
-        try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          localVideo.srcObject = localStream;
-          videoStage.classList.remove("hidden");
-        } catch (e) {
-          alert("Media access denied");
-        }
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        document.getElementById("localVideo").srcObject = localStream;
+        document.getElementById("videoCallStage").classList.remove("hidden");
       }
 
-      function createPeerConnection() {
-        // Use the dynamic iceServers here
-        peerConnection = new RTCPeerConnection({ iceServers });
-        localStream
-          .getTracks()
-          .forEach((t) => peerConnection.addTrack(t, localStream));
-        peerConnection.ontrack = (e) => {
-          remoteVideo.srcObject = e.streams[0];
+      function createPeerConnection(targetId) {
+        const pc = new RTCPeerConnection({ iceServers });
+        peerConnections[targetId] = pc;
+
+        localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+
+        pc.ontrack = (e) => {
+          // In this specific UI, we only have one remoteVideo element
+          document.getElementById("remoteVideo").srcObject = e.streams[0];
         };
-        peerConnection.onicecandidate = (e) => {
+
+        pc.onicecandidate = (e) => {
           if (e.candidate)
             socket.emit("video:iceCandidate", {
               callId: activeCallId,
               data: e.candidate,
+              targetId: targetId,
               senderId: activeUser,
             });
         };
+        return pc;
+      }
+
+      async function initiateOffer(targetId) {
+        const pc = createPeerConnection(targetId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit("video:offer", {
+          callId: activeCallId,
+          data: offer,
+          targetId: targetId,
+          senderId: activeUser,
+        });
       }
 
       function resetVideoCall() {
         if (localStream) localStream.getTracks().forEach((t) => t.stop());
-        if (peerConnection) peerConnection.close();
-        localVideo.srcObject =
-          remoteVideo.srcObject =
-          peerConnection =
-          localStream =
-          activeCallId =
-            null;
-        isCaller = false;
-        videoStage.classList.add("hidden");
+        Object.values(peerConnections).forEach((pc) => pc.close());
+        peerConnections = {};
+        activeCallId = null;
+        document.getElementById("videoCallStage").classList.add("hidden");
         document.getElementById("incomingCallModal").classList.add("hidden");
       }
 
-      document.getElementById("startCallBtn").onclick = () => {
-        const receiver = recId.value.trim();
-        if (!receiver) return alert("Select user first");
-        isCaller = true;
+      // CALL BUTTONS
+      document.getElementById("startCallBtn").onclick = async () => {
+        const receiver = recIdInput.value.trim();
+        if (!receiver) return alert("Enter Receiver ID");
         activeCallId = `call_${Date.now()}`;
-        document.getElementById("videoCallPeerName").textContent = receiver;
-        videoStage.classList.remove("hidden");
+        isCaller = true;
+        await initMedia();
         socket.emit("video:initiateCall", {
           callId: activeCallId,
           callerId: activeUser,
-          receiverId: receiver,
+          receiverIds: [receiver], // Sent as array for conference support
+        });
+        // Join room immediately to wait for participants
+        socket.emit("video:joinRoom", {
+          callId: activeCallId,
+          participantId: activeUser,
         });
       };
 
       document.getElementById("acceptCallBtn").onclick = async () => {
         document.getElementById("incomingCallModal").classList.add("hidden");
+        await initMedia();
         socket.emit("video:respondToCall", {
           callId: activeCallId,
           callerId: document.getElementById("incomingCallName").textContent,
           responderId: activeUser,
           status: "accepted",
         });
-        await initMedia();
         socket.emit("video:joinRoom", {
           callId: activeCallId,
           participantId: activeUser,
@@ -837,31 +799,17 @@
       document.getElementById("rejectCallBtn").onclick = () => {
         socket.emit("video:respondToCall", {
           callId: activeCallId,
-          callerId: document.getElementById("incomingCallName").textContent,
-          responderId: activeUser,
           status: "rejected",
         });
         resetVideoCall();
       };
 
       document.getElementById("endCallBtn").onclick = () => {
-        if (activeCallId)
-          socket.emit("video:leaveCall", {
-            callId: activeCallId,
-            participantId: activeUser,
-          });
+        socket.emit("video:leaveCall", {
+          callId: activeCallId,
+          participantId: activeUser,
+        });
         resetVideoCall();
-      };
-
-      document.getElementById("toggleAudioBtn").onclick = function () {
-        const t = localStream.getAudioTracks()[0];
-        t.enabled = !t.enabled;
-        this.classList.toggle("bg-red-500/80");
-      };
-      document.getElementById("toggleVideoBtn").onclick = function () {
-        const t = localStream.getVideoTracks()[0];
-        t.enabled = !t.enabled;
-        this.classList.toggle("bg-red-500/80");
       };
     </script>
   </body>

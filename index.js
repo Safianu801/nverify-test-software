@@ -75,10 +75,8 @@ localIo.on("connection", (socket) => {
   );
 
   // ==========================================
-  // 2. VIDEO CALL EVENTS (Conference Enabled)
+  // 2. VIDEO EVENTS (Piped through)
   // ==========================================
-
-  // SaaS -> Proxy -> Frontend
   saasSocket.on("video:error", (err) => socket.emit("video:error", err));
   saasSocket.on("video:incomingCall", (data) =>
     socket.emit("video:incomingCall", data),
@@ -99,15 +97,12 @@ localIo.on("connection", (socket) => {
   saasSocket.on("video:iceConfig", (data) =>
     socket.emit("video:iceConfig", data),
   );
-
-  // Signaling (Must include targetId)
   saasSocket.on("video:offer", (data) => socket.emit("video:offer", data));
   saasSocket.on("video:answer", (data) => socket.emit("video:answer", data));
   saasSocket.on("video:iceCandidate", (data) =>
     socket.emit("video:iceCandidate", data),
   );
 
-  // Frontend -> Proxy -> SaaS
   socket.on("video:initiateCall", (data) =>
     saasSocket.emit("video:initiateCall", data),
   );
@@ -127,6 +122,56 @@ localIo.on("connection", (socket) => {
   );
   socket.on("video:leaveCall", (data) =>
     saasSocket.emit("video:leaveCall", data),
+  );
+
+  // ==========================================
+  // 3. AUDIO EVENTS (Piped through)
+  // ==========================================
+  saasSocket.on("audio:error", (err) => socket.emit("audio:error", err));
+  saasSocket.on("audio:incomingCall", (data) =>
+    socket.emit("audio:incomingCall", data),
+  );
+  saasSocket.on("audio:callResponse", (data) =>
+    socket.emit("audio:callResponse", data),
+  );
+  saasSocket.on("audio:ready", (data) => socket.emit("audio:ready", data));
+  saasSocket.on("audio:userJoined", (data) =>
+    socket.emit("audio:userJoined", data),
+  );
+  saasSocket.on("audio:userLeft", (data) =>
+    socket.emit("audio:userLeft", data),
+  );
+  saasSocket.on("audio:mediaStateChanged", (data) =>
+    socket.emit("audio:mediaStateChanged", data),
+  );
+  saasSocket.on("audio:iceConfig", (data) =>
+    socket.emit("audio:iceConfig", data),
+  );
+  saasSocket.on("audio:offer", (data) => socket.emit("audio:offer", data));
+  saasSocket.on("audio:answer", (data) => socket.emit("audio:answer", data));
+  saasSocket.on("audio:iceCandidate", (data) =>
+    socket.emit("audio:iceCandidate", data),
+  );
+
+  socket.on("audio:initiateCall", (data) =>
+    saasSocket.emit("audio:initiateCall", data),
+  );
+  socket.on("audio:respondToCall", (data) =>
+    saasSocket.emit("audio:respondToCall", data),
+  );
+  socket.on("audio:joinRoom", (data) =>
+    saasSocket.emit("audio:joinRoom", data),
+  );
+  socket.on("audio:offer", (data) => saasSocket.emit("audio:offer", data));
+  socket.on("audio:answer", (data) => saasSocket.emit("audio:answer", data));
+  socket.on("audio:iceCandidate", (data) =>
+    saasSocket.emit("audio:iceCandidate", data),
+  );
+  socket.on("audio:toggleMedia", (data) =>
+    saasSocket.emit("audio:toggleMedia", data),
+  );
+  socket.on("audio:leaveCall", (data) =>
+    saasSocket.emit("audio:leaveCall", data),
   );
 
   socket.on("disconnect", () => saasSocket.disconnect());

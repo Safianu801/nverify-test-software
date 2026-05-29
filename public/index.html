@@ -513,11 +513,7 @@
       </div>
     </template>
 
-    <!-- ... (Keep your existing HTML Head and Styles) ... -->
-    <!-- The only change is inside the <script> at the bottom -->
-
     <script>
-      // Updated URL to your Proxy Backend
       const LOCAL_URL = "https://nverify-test-software.onrender.com";
 
       const [
@@ -548,14 +544,11 @@
       let socket, activeUser, currentRoom;
       const domNodes = new Map();
 
-      // WebRTC State
       let localStream;
-      let peerConnections = {}; // Map of targetId -> RTCPeerConnection
+      let peerConnections = {};
       let iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
       let activeCallId = null;
       let isCaller = false;
-
-      // UI Helpers
       function showMobileChat() {
         sidebarEl.classList.add("hidden", "md:flex");
         chatAreaEl.classList.remove("hidden", "md:flex");

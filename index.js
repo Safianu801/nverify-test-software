@@ -9,6 +9,7 @@ const server = http.createServer(app);
 
 const localIo = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
+  maxHttpBufferSize: 500 * 1024 * 1024,
 });
 
 localIo.use((socket, next) => {
@@ -33,9 +34,6 @@ localIo.on("connection", (socket) => {
     reconnection: true,
   });
 
-  // ==========================================
-  // 1. CHAT EVENTS (Piped through)
-  // ==========================================
   const chatEvents = [
     "chat:history",
     "chat:newMessage",

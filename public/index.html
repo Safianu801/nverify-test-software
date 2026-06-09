@@ -62,6 +62,47 @@
           box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
         }
       }
+
+      /* MEDIA STYLES */
+      .msg-media-img {
+        max-width: 100%;
+        max-height: 250px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        cursor: pointer;
+      }
+      .msg-media-video {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-bottom: 6px;
+      }
+      .msg-media-audio {
+        max-width: 100%;
+        height: 44px;
+        margin-bottom: 6px;
+        border-radius: 22px;
+      }
+
+      /* MIC RECORDING PULSE */
+      .recording {
+        color: #ef4444 !important;
+        animation: pulseRed 1.2s infinite;
+      }
+      @keyframes pulseRed {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body class="h-[100dvh] w-screen bg-slate-100 overflow-hidden text-slate-800">
@@ -255,7 +296,7 @@
 
           <!-- Call Action Buttons -->
           <div class="flex gap-1">
-            <!-- Audio Call Button Added -->
+            <!-- Audio Call Button -->
             <button
               id="startAudioCallBtn"
               class="p-3 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all shrink-0"
@@ -274,6 +315,7 @@
                 ></path>
               </svg>
             </button>
+            <!-- Video Call Button -->
             <button
               id="startCallBtn"
               class="p-3 text-slate-600 hover:text-green-600 hover:bg-green-50 rounded-full transition-all shrink-0"
@@ -300,16 +342,55 @@
           class="flex-1 p-4 md:p-8 overflow-y-auto space-y-4 md:space-y-6 flex flex-col"
         ></div>
 
+        <!-- MODIFIED INPUT AREA W/ ATTACHMENTS & MIC -->
         <div class="p-3 md:p-4 bg-slate-50 border-t border-slate-200">
-          <div class="flex items-center gap-2 max-w-5xl mx-auto">
+          <div class="flex items-center gap-2 max-w-5xl mx-auto w-full">
+            <!-- Hidden File Input -->
+            <input
+              type="file"
+              id="fileAttachment"
+              multiple
+              style="display: none"
+              onchange="handleFileSelect(event)"
+            />
+
+            <!-- Attach Button -->
+            <button
+              id="attachBtn"
+              onclick="document.getElementById('fileAttachment').click()"
+              class="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-slate-200 rounded-full transition shrink-0"
+              disabled
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                ></path>
+              </svg>
+            </button>
+
+            <!-- Text Input -->
             <div class="flex-1 relative">
               <input
                 id="messageInput"
-                class="w-full bg-white border border-slate-300 rounded-full px-5 py-3 md:py-3.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-800 text-[15px] shadow-sm"
+                class="w-full bg-white border border-slate-300 rounded-full px-5 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-800 text-[15px] shadow-sm"
                 placeholder="Type a message"
                 disabled
+                onkeypress="
+                  if (event.key === 'Enter')
+                    document.getElementById('sendBtn').click();
+                "
               />
             </div>
+
+            <!-- Send Button -->
             <button
               id="sendBtn"
               class="bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-transform active:scale-95 shrink-0"
@@ -329,11 +410,33 @@
                 ></path>
               </svg>
             </button>
+
+            <!-- Mic Button -->
+            <button
+              id="micBtn"
+              onclick="toggleVoiceRecording()"
+              class="bg-slate-200 hover:bg-slate-300 text-slate-700 w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all active:scale-95 shrink-0"
+              disabled
+              title="Click to start/stop recording"
+            >
+              <svg
+                class="w-5 h-5 md:w-6 md:h-6"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+                />
+                <path
+                  d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </section>
 
-      <!-- 3. INCOMING VIDEO CALL MODAL (Untouched) -->
+      <!-- 3. INCOMING VIDEO CALL MODAL -->
       <div
         id="incomingCallModal"
         class="hidden absolute inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 fade-in"
@@ -391,7 +494,7 @@
         </div>
       </div>
 
-      <!-- 3b. INCOMING AUDIO CALL MODAL (New) -->
+      <!-- 3b. INCOMING AUDIO CALL MODAL -->
       <div
         id="incomingAudioCallModal"
         class="hidden absolute inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 fade-in"
@@ -452,7 +555,7 @@
         </div>
       </div>
 
-      <!-- 4. ACTIVE VIDEO CALL STAGE (Untouched) -->
+      <!-- 4. ACTIVE VIDEO CALL STAGE -->
       <div
         id="videoCallStage"
         class="hidden absolute inset-0 z-[70] bg-[#111] flex flex-col fade-in"
@@ -547,7 +650,7 @@
         </div>
       </div>
 
-      <!-- 4b. ACTIVE AUDIO CALL STAGE (New) -->
+      <!-- 4b. ACTIVE AUDIO CALL STAGE -->
       <div
         id="audioCallStage"
         class="hidden absolute inset-0 z-[70] bg-slate-900 flex flex-col items-center justify-center fade-in"
@@ -618,9 +721,14 @@
         <div
           class="msg-bubble bg-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] p-2.5 md:p-3 rounded-2xl rounded-tl-none relative group min-w-[100px] max-w-[85%] md:max-w-[65%]"
         >
+          <!-- Media Container -->
+          <div class="msg-media-container w-full"></div>
+
+          <!-- Text Container -->
           <div
             class="text-[15px] msg-text whitespace-pre-wrap text-slate-800 leading-relaxed break-words"
           ></div>
+
           <div
             class="text-[10px] text-slate-400 mt-1 flex justify-end items-center gap-1.5 float-right ml-4 pt-1"
           >
@@ -640,9 +748,11 @@
               </svg>
             </span>
           </div>
+
           <div
             class="reactions-display absolute -bottom-3 right-2 bg-white border border-slate-100 shadow-sm rounded-full px-2 py-0.5 text-xs hidden z-10"
           ></div>
+
           <div
             class="actions absolute -top-8 right-0 bg-slate-800 text-white rounded-lg shadow-lg hidden group-hover:flex overflow-hidden transform scale-90 origin-bottom-right z-20"
           >
@@ -662,7 +772,8 @@
     </template>
 
     <script>
-      const LOCAL_URL = "https://nverify-test-software.onrender.com";
+      // Make sure this points to your Proxy Backend Server URL
+      const LOCAL_URL = "http://localhost:4000";
 
       const [
         myIdInput,
@@ -672,6 +783,8 @@
         chatScroll,
         msgInput,
         sendBtn,
+        attachBtn,
+        micBtn,
         typInd,
         convoList,
       ] = [
@@ -682,6 +795,8 @@
         "chatScroll",
         "messageInput",
         "sendBtn",
+        "attachBtn",
+        "micBtn",
         "typingIndicator",
         "convoList",
       ].map((id) => document.getElementById(id));
@@ -691,6 +806,11 @@
 
       let socket, activeUser, currentRoom;
       const domNodes = new Map();
+
+      // RECORDING GLOBALS
+      let mediaRecorder;
+      let audioChunks = [];
+      let isRecording = false;
 
       // VIDEO CALL GLOBALS
       let localStream;
@@ -710,27 +830,57 @@
         chatAreaEl.classList.remove("hidden", "md:flex");
         chatAreaEl.classList.add("flex");
       }
+      function showMobileList() {
+        sidebarEl.classList.remove("hidden", "md:flex");
+        chatAreaEl.classList.add("hidden", "md:flex");
+        chatAreaEl.classList.remove("flex");
+      }
 
       function renderMsg(msg) {
         if (domNodes.has(msg._id)) return;
         const tpl = document.getElementById("msgTpl").content.cloneNode(true);
-        const [wrapper, bubble, text, delBtn, readSt, reactDisp, time] = [
-          ".msg-wrapper",
-          ".msg-bubble",
-          ".msg-text",
-          ".delete-btn",
-          ".read-status",
-          ".reactions-display",
-          ".sender-time",
-        ].map((sel) => tpl.querySelector(sel));
+
+        const wrapper = tpl.querySelector(".msg-wrapper");
+        const bubble = tpl.querySelector(".msg-bubble");
+        const textContainer = tpl.querySelector(".msg-text");
+        const mediaContainer = tpl.querySelector(".msg-media-container");
+        const delBtn = tpl.querySelector(".delete-btn");
+        const readSt = tpl.querySelector(".read-status");
+        const reactDisp = tpl.querySelector(".reactions-display");
+        const time = tpl.querySelector(".sender-time");
 
         domNodes.set(msg._id, wrapper);
-        text.textContent = msg.deleted ? "🚫 Message deleted" : msg.message;
+
+        // Render Text
+        textContainer.textContent = msg.deleted
+          ? "🚫 Message deleted"
+          : msg.message || "";
         time.textContent = new Date(msg.createdAt).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
 
+        // Render Media based on `msg.media` schema
+        if (msg.media && msg.media.url) {
+          const m = msg.media;
+          if (m.type === "image") {
+            mediaContainer.innerHTML = `<img src="${m.url}" class="msg-media-img" onclick="window.open('${m.url}','_blank')" />`;
+          } else if (m.type === "video") {
+            mediaContainer.innerHTML = `<video src="${m.url}" controls class="msg-media-video"></video>`;
+          } else if (m.type === "audio" || msg.type === "voice") {
+            mediaContainer.innerHTML = `<audio src="${m.url}" controls class="msg-media-audio bg-slate-100 w-full"></audio>`;
+          } else {
+            mediaContainer.innerHTML = `
+              <div class="bg-slate-100 p-3 rounded-lg mb-2 flex items-center gap-3 border border-slate-200">
+                <div class="p-2 bg-blue-100 text-blue-600 rounded">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                </div>
+                <a href="${m.url}" target="_blank" class="text-blue-600 font-medium text-sm underline truncate block">${m.name || "View Document"}</a>
+              </div>`;
+          }
+        }
+
+        // Apply styles for sender vs receiver
         if (msg.senderId === activeUser) {
           wrapper.classList.replace("justify-start", "justify-end");
           bubble.classList.replace("bg-white", "bg-[#d9fdd3]");
@@ -756,11 +906,19 @@
         });
 
         socket.on("connect", () => {
-          msgInput.disabled = sendBtn.disabled = false;
+          // Enable input UI
+          msgInput.disabled =
+            sendBtn.disabled =
+            attachBtn.disabled =
+            micBtn.disabled =
+              false;
+
           document.getElementById("loginScreen").classList.add("hidden");
           document.getElementById("mainApp").classList.remove("hidden");
           document.getElementById("currentUserDisplay").textContent =
             activeUser;
+          document.getElementById("chatHeaderTitle").textContent =
+            "Chat: " + currentRoom;
 
           socket.emit("chat:joinChat", {
             conversationId: currentRoom,
@@ -772,7 +930,7 @@
           showMobileChat();
         });
 
-        // Chat Logic
+        // Chat Socket Logic
         socket.on("chat:history", (data) => {
           chatScroll.innerHTML = "";
           domNodes.clear();
@@ -783,8 +941,13 @@
           if (msg.conversationId === currentRoom) renderMsg(msg);
         });
 
+        socket.on("chat:error", (err) => {
+          console.error(err);
+          alert(err.message || "An error occurred");
+        });
+
         // ==========================================
-        // VIDEO LOGIC (Untouched)
+        // VIDEO LOGIC
         // ==========================================
         socket.on("video:iceConfig", (data) => {
           iceServers = data.iceServers;
@@ -842,7 +1005,7 @@
         });
 
         // ==========================================
-        // AUDIO LOGIC (New, mirrors Video)
+        // AUDIO LOGIC
         // ==========================================
         socket.on("audio:iceConfig", (data) => {
           iceServers = data.iceServers;
@@ -901,21 +1064,127 @@
         });
       };
 
-      // SEND MESSAGE
+      // ==========================================
+      // TEXT SENDING
+      // ==========================================
       sendBtn.onclick = () => {
         const text = msgInput.value.trim();
         if (!text) return;
         socket.emit("chat:sendMessage", {
           conversationId: currentRoom,
           senderId: activeUser,
+          receiverId: recIdInput.value.trim() || null,
           message: text,
-          receiverId: recIdInput.value.trim(),
+          files: [],
+          isVoiceNote: false,
         });
         msgInput.value = "";
       };
 
       // ==========================================
-      // VIDEO UI FUNCTIONS (Untouched)
+      // FILE ATTACHMENTS (Images, Videos, Docs)
+      // ==========================================
+      function handleFileSelect(event) {
+        const files = event.target.files;
+        if (!files.length) return;
+
+        const MAX_SIZE = 50 * 1024 * 1024; // 50MB Limit
+
+        for (let file of files) {
+          if (file.size > MAX_SIZE) {
+            alert(
+              `File "${file.name}" is too large. Max allowed size is 50MB.`,
+            );
+            event.target.value = "";
+            return;
+          }
+        }
+
+        const filePromises = Array.from(files).map((file) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              resolve({
+                buffer: e.target.result,
+                mimetype: file.type || "application/octet-stream",
+                size: file.size,
+                name: file.name,
+              });
+            };
+            reader.readAsArrayBuffer(file);
+          });
+        });
+
+        Promise.all(filePromises).then((processedFiles) => {
+          socket.emit("chat:sendMessage", {
+            conversationId: currentRoom,
+            senderId: activeUser,
+            receiverId: recIdInput.value.trim() || null,
+            message: msgInput.value.trim() || "",
+            files: processedFiles,
+            isVoiceNote: false,
+          });
+
+          msgInput.value = "";
+          event.target.value = "";
+        });
+      }
+
+      // ==========================================
+      // VOICE RECORDING
+      // ==========================================
+      async function toggleVoiceRecording() {
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+            mediaRecorder.onstop = async () => {
+              const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+              const arrayBuffer = await audioBlob.arrayBuffer();
+
+              socket.emit("chat:sendMessage", {
+                conversationId: currentRoom,
+                senderId: activeUser,
+                receiverId: recIdInput.value.trim() || null,
+                message: "",
+                files: [
+                  {
+                    buffer: arrayBuffer,
+                    mimetype: "audio/webm",
+                    size: audioBlob.size,
+                    name: "Voice Note",
+                  },
+                ],
+                isVoiceNote: true,
+              });
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            micBtn.classList.add("recording");
+            msgInput.disabled = true;
+            msgInput.placeholder =
+              "Recording audio... Click mic to stop and send.";
+          } catch (err) {
+            alert("Microphone access denied or unavailable.");
+          }
+        } else {
+          mediaRecorder.stop();
+          mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+          isRecording = false;
+          micBtn.classList.remove("recording");
+          msgInput.disabled = false;
+          msgInput.placeholder = "Type a message";
+        }
+      }
+
+      // ==========================================
+      // VIDEO UI FUNCTIONS
       // ==========================================
       async function initMedia() {
         localStream = await navigator.mediaDevices.getUserMedia({
@@ -1015,7 +1284,7 @@
       };
 
       // ==========================================
-      // AUDIO UI FUNCTIONS (New)
+      // AUDIO UI FUNCTIONS
       // ==========================================
       async function initAudioMedia() {
         localAudioStream = await navigator.mediaDevices.getUserMedia({

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Drive Upload Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f7f6;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+      input[type="file"] {
+        margin: 20px 0;
+      }
+      button {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+      }
+      button:hover {
+        background-color: #357ae8;
+      }
+      button:disabled {
+        background-color: #a0c1ff;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+      #result {
+        margin-top: 15px;
+        text-align: left;
+        word-wrap: break-word;
+        font-size: 14px;
+      }
+      a {
+        color: #4285f4;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Upload Media</h2>
+      <form id="uploadForm">
+        <!-- Note: the name must be "mediaFile" to match upload.single('mediaFile') in your backend -->
+        <input type="file" id="fileInput" name="mediaFile" required />
+        <button type="submit" id="submitBtn">Upload to Google Drive</button>
+      </form>
+
+      <div id="status"></div>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const form = document.getElementById("uploadForm");
+      const fileInput = document.getElementById("fileInput");
+      const submitBtn = document.getElementById("submitBtn");
+      const statusDiv = document.getElementById("status");
+      const resultDiv = document.getElementById("result");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); // Prevent page refresh
+
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        // 1. Prepare UI for loading
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Uploading (Please wait)...";
+        statusDiv.style.color = "black";
+        statusDiv.innerText = "Uploading file to server...";
+        resultDiv.innerHTML = "";
+
+        // 2. Create FormData
+        const formData = new FormData();
+        formData.append("mediaFile", file); // 'mediaFile' matches Express code
+
+        try {
+          // 3. Send to backend
+          const response = await fetch("http://localhost:4000/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          // 4. Handle Response
+          if (response.ok) {
+            statusDiv.style.color = "green";
+            statusDiv.innerText = "✅ Upload Successful!";
+
+            // Show the returned links
+            resultDiv.innerHTML = `
+                    <p><strong>Saved in MongoDB ID:</strong> ${data.data._id}</p>
+                    <p><strong>View URL:</strong> <br> <a href="${data.data.viewUrl}" target="_blank">Click here to view</a></p>
+                    <p><strong>Download URL:</strong> <br> <a href="${data.data.downloadUrl}" target="_blank">Click here to download</a></p>
+                `;
+          } else {
+            statusDiv.style.color = "red";
+            statusDiv.innerText = "❌ Upload Failed!";
+            resultDiv.innerText = data.error || "Unknown error occurred.";
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          statusDiv.style.color = "red";
+          statusDiv.innerText = "❌ Connection Error!";
+          resultDiv.innerText =
+            "Make sure your Node.js server is running on localhost:3000 and CORS is enabled.";
+        } finally {
+          // Reset button
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Upload to Google Drive";
+          fileInput.value = ""; // clear input
+        }
+      });
+    </script>
+  </body>
+</html>
